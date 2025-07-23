@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T.R.A.C.K. - {{ horse_name }} の戦歴</title>
+
+    <link rel="icon" href="https://tvcdn.netkeiba.com/img.dir/campaign/2023/derby/common/img/sp/fv_horse_img.png"
+        type="image/png">
+    <link rel="apple-touch-icon"
+        href="https://tvcdn.netkeiba.com/img.dir/campaign/2023/derby/common/img/sp/fv_horse_img.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+</head>
+
+<body>
+    <div class="container career-page">
+        <div class="career-header-section">
+            <h1 class="page-title">🏇{{ horse_name }} の戦歴 (T.R.A.C.K.)</h1>
+            <a href="#" onclick="goBackToIndex()" class="nav-button back-to-odds">
+                <i class="fas fa-arrow-left"></i> 馬名オッズ一覧に戻る
+            </a>
+        </div>
+
+        <div class="chart-navigation-wrapper">
+            <div class="chart-and-buttons">
+                <div class="chart-area">
+                    <h2>スコア時系列推移</h2>
+                    <canvas id="scoreChart"></canvas>
+                </div>
+
+                <div class="chart-buttons-bottom">
+                    {# Prev button #}
+                    {% if prev_horse_name %}
+                        <a href="{{ url_for('horse_career_page', horse_name=prev_horse_name|urlencode, race_url=race_url_for_back|urlencode, year=year_for_back, month=month_for_back) }}" class="nav-arrow-button">
+                            <i class="fas fa-chevron-left"></i> 前の馬
+                        </a>
+                    {% else %}
+                        <div class="nav-arrow-button disabled" title="前の馬はいません">
+                            <i class="fas fa-chevron-left"></i> 前の馬
+                        </div>
+                    {% endif %}
+
+                    {# Next button #}
+                    {% if next_horse_name %}
+                        <a href="{{ url_for('horse_career_page', horse_name=next_horse_name|urlencode, race_url=race_url_for_back|urlencode, year=year_for_back, month=month_for_back) }}" class="nav-arrow-button">
+                            次の馬 <i class="fas fa-chevron-right"></i>
+                        </a>
+                    {% else %}
+                        <div class="nav-arrow-button disabled" title="次の馬はいません">
+                            次の馬 <i class="fas fa-chevron-right"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="career-table-panel">
+            <h2>全戦歴詳細</h2>
+            <div class="table-responsive">
+                {% if horse_details %}
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                {% for key in horse_details[0].keys() %}
+                                    <th>{{ key }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in horse_details %}
+                                <tr>
+                                    {% for value in row.values() %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>戦歴データがありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.jsでグラフを描画する関数
+        async function fetchDataAndDrawChart() {
+            const horseName = "{{ horse_name | urlencode }}"; // URLエンコードしてAPIに渡す
+            const chartAreaDiv = document.querySelector('.chart-area');
+
+            try {
+                const response = await fetch(`/horse_career_data/${horseName}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                if (!data || !data.labels || data.labels.length === 0) {
+                    chartAreaDiv.innerHTML = '<h2>スコア時系列推移</h2><p>グラフデータが見つかりませんでした。</p>';
+                    return;
+                }
+
+                const ctx = document.getElementById('scoreChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false, // アスペクト比を固定しない
+                        scales: {
+                            x: {
+                                type: 'category', // 日付文字列用
+                                labels: data.labels, // 明示的にラベルを設定
+                                title: {
+                                    display: true,
+                                    text: '日付',
+                                    color: '#f0f0f0' // ダークテーマに合わせた色
+                                },
+                                ticks: {
+                                    color: '#e0e0e0' // ダークテーマに合わせた色
+                                },
+                                grid: {
+                                    color: '#444444' // グリッドの色
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'スコア',
+                                    color: '#f0f0f0' // ダークテーマに合わせた色
+                                },
+                                ticks: {
+                                    color: '#e0e0e0' // ダークテーマに合わせた色
+                                },
+                                grid: {
+                                    color: '#444444' // グリッドの色
+                                }
+                            }
+                        },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                // ★変更ここから★ ツールチップのタイトルをカスタマイズ
+                                title: (context) => {
+                                    const dataIndex = context[0].dataIndex;
+                                    const raceDetail = data.race_details[dataIndex]; // APIから取得したrace_detailsを参照
+
+                                    let titleLines = [];
+                                    titleLines.push(`日付: ${context[0].label}`); // 日付をタイトルに
+
+                                    if (raceDetail) {
+                                        titleLines.push(`レース: ${raceDetail['レース名']}`);
+                                        // レース詳細情報をまとめて表示                                       
+                                        if (raceDetail['芝・ダ'] && raceDetail['芝・ダ'] !== 'N/A') {
+                                            titleLines.push(`芝/ダ: ${raceDetail['芝・ダ']}`);
+                                        }
+                                        if (raceDetail['距離'] && raceDetail['距離'] !== 'N/A') {
+                                            titleLines.push(`距離: ${raceDetail['距離']}`);
+                                        }
+                                        if (raceDetail['馬場状態'] && raceDetail['馬場状態'] !== 'N/A') {
+                                            titleLines.push(`馬場: ${raceDetail['馬場状態']}`);
+                                        }
+                                    }
+                                    return titleLines; // 配列を返すと複数行になる
+                                },
+                                // label コールバックはスコア情報のみ
+                                label: (context) => {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1); // スコアを小数点以下1桁で表示
+                                    }
+                                    return label;
+                                },
+                                // afterLabel コールバックを削除またはnullにする
+                                afterLabel: (context) => {
+                                    return null; // afterLabelでは何も表示しない
+                                }
+                                // ★変更ここまで★
+                            },
+                            backgroundColor: 'rgba(0,0,0,0.7)', // ツールチップ背景色
+                            titleColor: '#ffffff', // ツールチップタイトル色
+                            bodyColor: '#e0e0e0', // ツールチップ本文色
+                            borderColor: '#e50914', // ツールチップ枠線色
+                            borderWidth: 1
+                        },
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0' // 凡例のテキスト色
+                            }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x', // X軸方向のみパン可能
+                                modifierKey: 'ctrl', // Ctrlキーを押しながらドラッグでパン
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true, // マウスホイールでズーム
+                                },
+                                pinch: {
+                                    enabled: true // ピンチジェスチャーでズーム
+                                },
+                                mode: 'x', // X軸方向のみズーム可能
+                            }
+                        }
+                    },
+                    backgroundColor: '#1e1e1e' 
+                }
+            });
+            } catch (error) {
+                console.error('グラフデータの取得または描画中にエラーが発生しました:', error);
+                chartAreaDiv.innerHTML = '<h2>スコア時系列推移</h2><p>グラフの読み込みに失敗しました。</p>';
+            }
+        }
+
+        fetchDataAndDrawChart(); // ページロード時にグラフを描画
+
+
+        // goBackToIndex 関数: 現在のセッションデータをPOSTで送る
+        function goBackToIndex() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/'; // indexルートへPOST
+
+            // Flaskのsessionから渡されたデータ（Jinja2でtojson|urlencode済み）を
+            // JavaScript側でdecodeURIComponentしてからhidden inputにセット
+            const sessionData = {
+                race_url: "{{ race_url_for_back | urlencode if race_url_for_back is not none else '' }}",
+                year: "{{ year_for_back if year_for_back is not none else '' }}",
+                month: "{{ month_for_back if month_for_back is not none else '' }}",
+                
+                // JSON文字列をURLデコードしてそのままhidden inputの値にする
+                // app.py側で再度urllib.parse.unquoteしてからjson.loadsでパースされる
+                horse_list: decodeURIComponent("{{ session.get('horse_list', []) | tojson | urlencode }}"),
+                schedule_data: decodeURIComponent("{{ session.get('schedule_data', []) | tojson | urlencode }}"),
+                daily_races_data: decodeURIComponent("{{ session.get('daily_races_data', []) | tojson | urlencode }}")
+            };
+
+            for (const key in sessionData) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = sessionData[key]; 
+                form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+
+</html>

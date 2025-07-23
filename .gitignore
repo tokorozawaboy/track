@@ -1,0 +1,21 @@
+# Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.env                 # 環境変数ファイル（機密情報を含む可能性）
+*.log                # ログファイル
+
+# IDE specific files
+.vscode/             # VS Codeの設定ファイル
+.idea/               # PyCharmなどのIDEの設定ファイル
+
+# Data files (if not to be version controlled)
+data/*.csv           # 大容量データや機密データなど、Gitで管理しない場合
+# scored_historical_race_data.csv をGitHubに含めない場合は上記行を追加
+# もし含める場合はこの行は不要
+
+# Jupyter Notebook specific files
+.ipynb_checkpoints/

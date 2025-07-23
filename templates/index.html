@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T.R.A.C.K.</title>
+    <link rel="icon" href="https://tvcdn.netkeiba.com/img.dir/campaign/2023/derby/common/img/sp/fv_horse_img.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://tvcdn.netkeiba.com/img.dir/campaign/2023/derby/common/img/sp/fv_horse_img.png">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h1>🏇T.R.A.C.K. v1.1</h1>
+
+            <h2>開催年月を選択</h2>
+            <div class="input-group">
+                <label for="year">年:</label>
+                <input type="number" id="year" value="" min="2023" max="2030">
+                <label for="month">月:</label>
+                <input type="number" id="month" value="" min="1" max="12">
+                <button onclick="getSchedule()" id="getScheduleButton">
+                    <i class="fas fa-calendar-alt"></i> レース日程を取得
+                </button>
+            </div>
+
+            <div id="mainRacesList" class="race-list">
+                <h3>レース一覧:</h3>
+                <p>年月を選択して「レース日程を取得」ボタンを押してください。</p>
+            </div>
+            <div id="loadingMainRaces" class="loader"></div>
+        </div>
+
+        <div class="panel">
+            <div id="dailyRacesList" class="daily-race-list">
+                <h3>同日開催の全レース:</h3>
+                <p>レース日程をクリックすると、ここに同日開催のレースが表示されます。</p>
+            </div>
+            <div id="loadingDailyRaces" class="loader"></div>
+        </div>
+
+        <div class="panel race-details-panel">
+            <div id="raceDetails">
+                <h3>レース詳細とオッズ:</h3>
+                <button id="refreshOddsButton" style="display: none;">
+                    <i class="fas fa-sync-alt"></i> オッズを更新
+                </button>
+                <p>同日開催のレースをクリックすると、ここに馬名、オッズが表示されます。</p>
+            </div>
+            <div id="loadingRaceDetails" class="loader"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const now = new Date();
+            
+            // Flaskから渡された初期値を使用
+            const initialYear = {{ year | tojson }};
+            const initialMonth = {{ month | tojson }};
+
+            document.getElementById('year').value = initialYear !== null ? initialYear : now.getFullYear();
+            document.getElementById('month').value = initialMonth !== null ? initialMonth : (now.getMonth() + 1);
+
+            // イベント委譲により refreshOddsButton のクリックを検知
+            document.getElementById('raceDetails').addEventListener('click', (event) => {
+                if (event.target.id === 'refreshOddsButton' || event.target.closest('#refreshOddsButton')) {
+                    console.log("「オッズを更新」ボタンがクリックされました。(イベント委譲)");
+                    if (currentRaceOddsUrl) {
+                        getRaceOdds(currentRaceOddsUrl, true);
+                    } else {
+                        console.warn("currentRaceOddsUrlが設定されていません。オッズを更新できません。");
+                    }
+                }
+            });
+
+            // Flaskから渡された復元データ
+            const isRestoringSession = {{ is_restoring_session | tojson }}; // 新しいフラグ
+            const initialRaceUrl = "{{ race_url_to_load if race_url_to_load is not none else '' }}";
+            const initialHorseList = {{ initial_horse_list | tojson }};
+            const initialScheduleData = {{ initial_schedule_data | tojson }};
+            const initialDailyRacesData = {{ initial_daily_races_data | tojson }};
+
+            // グローバル変数にセッション復元データを格納
+            window.currentScheduleData = initialScheduleData;
+            window.currentDailyRacesData = initialDailyRacesData;
+            window.currentOddsData = initialHorseList; 
+            currentRaceOddsUrl = initialRaceUrl;
+
+
+            // isRestoringSessionがtrueの場合のみ、状態復元ロジックを実行
+            if (isRestoringSession) {
+                console.log("セッション復元中...");
+                
+                // 1. メインレース一覧の復元
+                if (window.currentScheduleData && window.currentScheduleData.length > 0) {
+                    displaySchedule(window.currentScheduleData);
+                } else {
+                    getSchedule(); 
+                    console.warn("セッションからスケジュールデータが見つからないため、再取得します。");
+                }
+
+                // 2. 同日開催レース一覧の復元
+                if (window.currentDailyRacesData && window.currentDailyRacesData.length > 0) {
+                    displayDailyRaces(window.currentDailyRacesData);
+                } else if (currentRaceOddsUrl) {
+                    getDailyRaces(currentRaceOddsUrl); 
+                    console.warn("セッションからデイリーレースデータが見つからないため、再取得します。");
+                }
+
+
+                // 3. オッズテーブルの復元
+                if (window.currentOddsData && window.currentOddsData.length > 0 && currentRaceOddsUrl) {
+                    // レース名も復元
+                    const raceNameDisplay = document.getElementById('raceDetails').querySelector('h3');
+                    if (raceNameDisplay) {
+                        raceNameDisplay.textContent = `レース詳細とオッズ: ${getRaceNameFromUrl(currentRaceOddsUrl)}`;
+                    }
+                    renderOddsTable(window.currentOddsData);
+                    // 適切な表示位置にスクロール
+                    document.getElementById('raceDetails').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else if (currentRaceOddsUrl) {
+                    getRaceOdds(currentRaceOddsUrl); 
+                    console.warn("セッションからオッズデータが見つからないため、再取得します。");
+                } else {
+                    console.log("復元できるデータがありませんでした。");
+                }
+            } else {
+                console.log("初回ロードです。");
+                //getSchedule(); // 初回ロード時もスケジュールを自動取得
+            }
+        });
+
+        const mainRacesListDiv = document.getElementById('mainRacesList');
+        const dailyRacesListDiv = document.getElementById('dailyRacesList');
+        const raceDetailsDiv = document.getElementById('raceDetails');
+        const getScheduleButton = document.getElementById('getScheduleButton');
+        const refreshOddsButton = document.getElementById('refreshOddsButton');
+        const loadingMainRaces = document.getElementById('loadingMainRaces');
+        const loadingDailyRaces = document.getElementById('loadingDailyRaces');
+        const loadingRaceDetails = document.getElementById('loadingRaceDetails');
+
+        let currentRaceOddsUrl = ''; // グローバル変数
+        let currentOddsData = []; // グローバル変数
+        let currentSortColumn = null;
+        let currentSortDirection = 'asc';
+
+        // グローバル変数として現在表示中のスケジュールとデイリーレースデータを保持
+        // window.currentScheduleData, window.currentDailyRacesData は DOMContentLoaded で初期化済み
+
+        function disableElements(elements, disable) {
+            elements.forEach(el => {
+                if (disable) {
+                    el.classList.add('disabled-link');
+                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
+                        el.disabled = true;
+                    }
+                } else {
+                    el.classList.remove('disabled-link');
+                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
+                        el.disabled = false;
+                    }
+                }
+            });
+        }
+        
+        // レースURLからレース名を取得するヘルパー関数
+        // daily_races_dataの各要素に'レース名'プロパティがあることを想定
+        function getRaceNameFromUrl(url) {
+            const foundRace = window.currentDailyRacesData.find(race => race.URL === url);
+            return foundRace ? `${foundRace['レース番号']} ${foundRace['レース名']}` : "レース名不明";
+        }
+
+
+        async function getSchedule() {
+            // console.log(`getSchedule呼び出し: 年=${document.getElementById('year').value}, 月=${document.getElementById('month').value}`); # DEBUGログ
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+
+            disableElements([getScheduleButton], true);
+            disableElements(document.querySelectorAll('.race-item, .daily-race-item'), true);
+            loadingMainRaces.style.display = 'block';
+            mainRacesListDiv.innerHTML = '<h3>レース一覧:</h3><p>読み込み中...</p>';
+
+            try {
+                const response = await fetch(`/get_schedule?year=${year}&month=${month}`);
+                const data = await response.json();
+                if (data.error) {
+                    mainRacesListDiv.innerHTML = `<p>エラー: ${data.error}</p>`; 
+                    return;
+                }
+                currentScheduleData = data; // グローバル変数に保存
+                displaySchedule(data);
+            } catch (error) {
+                console.error('レース日程取得エラー:', error);
+                mainRacesListDiv.innerHTML = '<h3>レース一覧:</h3><p>レース日程の取得に失敗しました。</p>';
+            } finally {
+                loadingMainRaces.style.display = 'none';
+                disableElements([getScheduleButton], false);
+                disableElements(document.querySelectorAll('.race-item, .daily-race-item'), false);
+            }
+        }
+
+        function displaySchedule(races) {
+            mainRacesListDiv.innerHTML = '<h3>メインレース一覧:</h3>';
+            if (races.length > 0) {
+                races.forEach(race => {
+                    const p = document.createElement('p');
+                    p.className = 'race-item';
+                    p.innerHTML = `<span>📅 ${race.日付}</span><span>${race.開催競馬場}</span><span>(${race.レース名})</span>`;
+                    p.onclick = () => getDailyRaces(race.URL);
+                    mainRacesListDiv.appendChild(p);
+                });
+            } else {
+                mainRacesListDiv.innerHTML += '<p>メインレースが見つかりませんでした。</p>';
+            }
+        }
+
+        async function getDailyRaces(mainRaceUrl) {
+            console.log("getDailyRaces呼び出し: URL=", mainRaceUrl);
+            const clickableElements = document.querySelectorAll('.race-item, .daily-race-item, .input-group button');
+            disableElements(clickableElements, true);
+
+            loadingDailyRaces.style.display = 'block';
+            dailyRacesListDiv.innerHTML = '<h3>同日開催の全レース:</h3><p>読み込み中...</p>';
+
+            try {
+                const response = await fetch(`/get_daily_races?url=${encodeURIComponent(mainRaceUrl)}`);
+                const races = await response.json();
+                if (races.error) { 
+                    dailyRacesListDiv.innerHTML = `<p>エラー: ${races.error}</p>`; 
+                    return;
+                }
+                console.log("同日開催レースURL取得成功:", races);
+                window.currentDailyRacesData = races; // グローバル変数に保存
+                displayDailyRaces(races);
+                dailyRacesListDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+                console.error('同日開催レース取得エラー:', error);
+                dailyRacesListDiv.innerHTML = '<h3>同日開催の全レース:</h3><p>同日開催レースの取得に失敗しました。</p>';
+            } finally {
+                disableElements(clickableElements, false);
+                loadingDailyRaces.style.display = 'none';
+            }
+        }
+
+        function displayDailyRaces(races) {
+            dailyRacesListDiv.innerHTML = '<h3>同日開催の全レース:</h3>';
+            if (races.length > 0) {
+                races.forEach(race => {
+                    const p = document.createElement('p');
+                    p.className = 'daily-race-item';
+                    p.textContent = `${race['レース番号']} ${race['レース名']}`; 
+                    p.onclick = () => getRaceOdds(race.URL);
+                    dailyRacesListDiv.appendChild(p);
+                });
+            } else {
+                dailyRacesListDiv.innerHTML += '<p>同日開催のレースが見つかりませんでした。</p>';
+            }
+        }
+
+        async function getRaceOdds(raceUrl, isRefresh = false) {
+            console.log(`getRaceOdds呼び出し: URL=${raceUrl}, 更新モード=${isRefresh}`);
+            currentRaceOddsUrl = raceUrl;
+            
+            const h3Title = raceDetailsDiv.querySelector('h3');
+            raceDetailsDiv.innerHTML = ''; 
+
+            if (h3Title) {
+                raceDetailsDiv.appendChild(h3Title);
+            } else {
+                const newH3 = document.createElement('h3');
+                newH3.textContent = 'レース詳細とオッズ:';
+                raceDetailsDiv.appendChild(newH3);
+            }
+            
+            raceDetailsDiv.appendChild(refreshOddsButton);
+            refreshOddsButton.style.display = 'block';
+
+
+            const clickableElements = document.querySelectorAll('.race-item, .daily-race-item, .input-group button');
+            disableElements(clickableElements, true);
+
+            loadingRaceDetails.style.display = 'block';
+            
+            const messageP = document.createElement('p');
+            messageP.textContent = isRefresh ? 'オッズ情報更新中...' : 'オッズ情報読み込み中...';
+            raceDetailsDiv.appendChild(messageP);
+
+
+            try {
+                const response = await fetch(`/get_race_odds?url=${encodeURIComponent(raceUrl)}`);
+                const result = await response.json();
+                console.log("DEBUG: オッズデータ取得結果 (APIからの完全なデータ):", result);
+
+                if (result.success) {
+                    // --- START MODIFIED ---
+                    // APIから返されたpredictions（馬名、オッズ、スコアなど全ての情報を含む）を
+                    // currentOddsData に直接代入します。
+                    currentOddsData = result.predictions; 
+                    // console.log("DEBUG: currentOddsDataにAPIからの新しいpredictionsを上書きしました:", JSON.parse(JSON.stringify(currentOddsData))); # DEBUGログ
+                    // console.log("DEBUG: currentOddsData.length (上書き後):", currentOddsData.length); # DEBUGログ
+                    // if (currentOddsData.length > 0) {
+                    //     console.log("DEBUG: currentOddsData[0] (上書き後):", currentOddsData[0]); # DEBUGログ
+                    // }
+                    // --- END MODIFIED ---
+
+                    // オッズ更新後もソート状態を維持したい場合のみ、ソートを再適用
+                    // --- START MODIFIED ---
+                    if (isRefresh && currentSortColumn) { 
+                        // console.log(`DEBUG: ソート状態を維持してデータを再ソート中: カラム=${currentSortColumn}, 方向=${currentSortDirection}`); # DEBUGログ
+                        sortOddsData(currentOddsData, currentSortColumn, currentSortDirection);
+                    } else if (!isRefresh) {
+                        // 初回ロード時のみソート状態をリセット
+                        currentSortColumn = null;
+                        currentSortDirection = 'asc';
+                    }
+                    // --- END MODIFIED ---
+
+                    renderOddsTable(currentOddsData);
+                    if (!isRefresh) { 
+                        raceDetailsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } else {
+                    console.error("ERROR: getOdds - API報告失敗:", result.error);
+                    const currentH3 = raceDetailsDiv.querySelector('h3');
+                    raceDetailsDiv.innerHTML = '';
+                    if (currentH3) raceDetailsDiv.appendChild(currentH3);
+                    raceDetailsDiv.appendChild(refreshOddsButton);
+                    raceDetailsDiv.innerHTML += `<p>オッズの取得に失敗しました: ${result.error || '不明なエラー'}</p>`;
+                }
+            } catch (error) {
+                console.error('ERROR: getOdds - オッズデータの取得または処理に失敗:', error);
+                const currentH3 = raceDetailsDiv.querySelector('h3');
+                raceDetailsDiv.innerHTML = '';
+                if (currentH3) currentH3.appendChild(raceDetailsDiv);
+                raceDetailsDiv.appendChild(refreshOddsButton);
+                raceDetailsDiv.innerHTML += `<p>オッズの取得中にエラーが発生しました。</p>`;
+            } finally {
+                disableElements(clickableElements, false);
+                loadingRaceDetails.style.display = 'none';
+            }
+        }
+
+        function renderOddsTable(data) {
+            // console.log("DEBUG: renderOddsTable呼び出し。最終表示データ:", JSON.parse(JSON.stringify(data))); # DEBUGログ
+            // if (data.length > 0) { # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - Sample horse in data:", data[0]); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - 馬番 for first horse:", data[0]['馬番']); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - 馬名 for first horse:", data[0]['馬名']); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - 単勝オッズ for first horse:", data[0]['単勝オッズ']); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - 複勝オッズ for first horse:", data[0]['複勝オッズ']); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - キャリア最高スコア for first horse:", data[0]['キャリア最高スコア']); # DEBUGログ
+            //     console.log("DEBUG: renderOddsTable - キャリア最高スコア日時 for first horse:", data[0]['キャリア最高スコア日時']); # DEBUGログ
+            // } # DEBUGログ
+            let tableHtml = `
+                <table class="odds-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-column="馬番">馬番 <i class="fas fa-sort"></i></th>
+                            <th class="sortable" data-column="馬名">馬名 <i class="fas fa-sort"></i></th>
+                            <th class="sortable" data-column="単勝オッズ">単勝オッズ <i class="fas fa-sort"></i></th>
+                            <th class="sortable" data-column="複勝オッズ">複勝オッズ <i class="fas fa-sort"></i></th>
+                            <th class="sortable" data-column="キャリア最高スコア">最高スコア <i class="fas fa-sort"></i></th>
+                            <th class="sortable" data-column="キャリア最高スコア日時">最高スコア日時 <i class="fas fa-sort"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            data.forEach(horse => {
+                tableHtml += `
+                    <tr>
+                        <td>${horse['馬番'] || 'N/A'}</td>
+                        <td><span class="horse-name-link" onclick="viewHorseCareer('${encodeURIComponent(horse['馬名'] || '')}')">${horse['馬名'] || 'N/A'}</span></td>
+                        <td>${horse['単勝オッズ'] || 'N/A'}</td>
+                        <td>${horse['複勝オッズ'] || 'N/A'}</td>
+                        <td>${horse['キャリア最高スコア'] || 'N/A'}</td>
+                        <td>${horse['キャリア最高スコア日時'] || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+            tableHtml += `</tbody></table>`;
+
+            const currentH3 = raceDetailsDiv.querySelector('h3');
+            raceDetailsDiv.innerHTML = '';
+            if (currentH3) raceDetailsDiv.appendChild(currentH3);
+            raceDetailsDiv.appendChild(refreshOddsButton);
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'table-responsive';
+            tableContainer.innerHTML = tableHtml;
+            raceDetailsDiv.appendChild(tableContainer);
+
+            refreshOddsButton.style.display = 'block';
+
+            attachSortEventListeners();
+            updateSortIcons();
+            console.log("オッズテーブルが再描画されました。");
+        }
+
+        function attachSortEventListeners() {
+            document.querySelectorAll('.odds-table th.sortable').forEach(header => {
+                header.removeEventListener('click', handleSortClick);
+                header.addEventListener('click', handleSortClick);
+            });
+        }
+
+        function handleSortClick(event) {
+            const column = event.currentTarget.dataset.column;
+            console.log(`ソートクリック: カラム=${column}`);
+
+            if (currentSortColumn === column) {
+                currentSortDirection = (currentSortDirection === 'asc' ? 'desc' : 'asc');
+            } else {
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+            console.log(`新しいソート状態: カラム=${currentSortColumn}, 方向=${currentSortDirection}`);
+
+            sortOddsData(currentOddsData, currentSortColumn, currentSortDirection);
+            renderOddsTable(currentOddsData);
+        }
+
+        function sortOddsData(dataArray, column, direction) {
+            console.log(`sortOddsData呼び出し: カラム=${column}, 方向=${direction}`);
+            dataArray.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                if (['馬番', '単勝オッズ', 'キャリア最高スコア'].includes(column)) {
+                    valA = parseFloat(valA);
+                    valB = parseFloat(valB);
+                    if (isNaN(valA) && isNaN(valB)) return 0;
+                    if (isNaN(valA)) return direction === 'asc' ? 1 : -1;
+                    if (isNaN(valB)) return direction === 'asc' ? -1 : 1;
+                }
+                else if (column === '複勝オッズ') {
+                    valA = parseFloat(String(valA).split('-')[0]);
+                    valB = parseFloat(String(valB).split('-')[0]);
+                    if (isNaN(valA) && isNaN(valB)) return 0;
+                    if (isNaN(valA)) return direction === 'asc' ? 1 : -1;
+                    if (isNaN(valB)) return direction === 'asc' ? -1 : 1;
+                }
+                else if (column === 'キャリア最高スコア日時') {
+                    const dateA = valA !== 'N/A' ? new Date(valA.replace(/\./g, '/')) : null;
+                    const dateB = valB !== 'N/A' ? new Date(valB.replace(/\./g, '/')) : null;
+
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return direction === 'asc' ? 1 : -1;
+                    if (!dateB) return direction === 'asc' ? -1 : 1;
+
+                    if (dateA < dateB) {
+                        return direction === 'asc' ? -1 : 1;
+                    }
+                    if (dateA > dateB) {
+                        return direction === 'asc' ? 1 : -1;
+                    }
+                    return 0;
+                }
+
+                if (valA < valB) {
+                    return direction === 'asc' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        // updateSortIcons関数はそのまま
+        function updateSortIcons() {
+            document.querySelectorAll('.odds-table th.sortable').forEach(header => {
+                const icon = header.querySelector('i');
+                header.classList.remove('asc', 'desc');
+                icon.classList.remove('fa-sort-up', 'fa-sort-down', 'fa-sort');
+                icon.classList.add('fa-sort');
+
+                if (header.dataset.column === currentSortColumn) {
+                    header.classList.add(currentSortDirection);
+                    if (currentSortDirection === 'asc') {
+                        icon.classList.remove('fa-sort');
+                        icon.classList.add('fa-sort-up');
+                    } else {
+                        icon.classList.remove('fa-sort');
+                        icon.classList.add('fa-sort-down');
+                    }
+                }
+            });
+        }
+        // 馬名クリック時の関数: GETリクエストで遷移
+        function viewHorseCareer(horseName) {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            
+            // URLパラメータとして渡す情報をエンコード
+            const encodedHorseName = encodeURIComponent(horseName);
+            const encodedRaceUrl = encodeURIComponent(currentRaceOddsUrl || '');
+            const encodedYear = encodeURIComponent(year || '');
+            const encodedMonth = encodeURIComponent(month || '');
+
+            // GETリクエストで遷移
+            let url = `/horse_career/${encodedHorseName}?`;
+            if (encodedRaceUrl) url += `race_url=${encodedRaceUrl}&`;
+            if (encodedYear) url += `year=${encodedYear}&`;
+            if (encodedMonth) url += `month=${encodedMonth}&`;
+            
+            // 末尾の余分な '&' または '?' を削除
+            if (url.endsWith('?') || url.endsWith('&')) {
+                url = url.slice(0, -1);
+            }
+            window.location.href = url;
+        }
+
+    </script>
+</body>
+
+</html>

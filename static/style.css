@@ -1,0 +1,781 @@
+/* ===================================== */
+/* Base Styles & Global Utilities        */
+/* ===================================== */
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    line-height: 1.6;
+    box-sizing: border-box;
+}
+
+/* Universal box-sizing for consistency */
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
+}
+
+.container {
+    max-width: 1800px;
+    margin: 40px auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    padding: 40px;
+    background-color: #242424;
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Panel styles (used on index.html) */
+.panel {
+    flex: 1;
+    min-width: 350px;
+    padding: 30px;
+    border-radius: 10px;
+    background-color: #2a2a2a;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.panel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+}
+
+.panel.race-details-panel {
+    flex: 2.5;
+    min-width: 600px;
+}
+
+/* Headings (General) */
+h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.8em;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 0;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e50914;
+    padding-bottom: 15px;
+    letter-spacing: 0.08em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+h2, h3 {
+    color: #f0f0f0;
+    margin-top: 0;
+    border-bottom: 1px solid #444444;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+h2 {
+    font-size: 1.8em;
+}
+
+h3 {
+    font-size: 1.4em;
+}
+
+/* Input group & Buttons (General) */
+.input-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 15px;
+}
+
+.input-group label {
+    margin-right: 0;
+    margin-bottom: 0;
+    font-weight: 400;
+    color: #b0b0b0;
+    flex-shrink: 0;
+}
+
+.input-group input[type="number"] {
+    flex-grow: 1;
+    max-width: 120px;
+    padding: 12px;
+    border: 1px solid #555555;
+    border-radius: 8px;
+    margin-right: 0;
+    margin-bottom: 0;
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    font-size: 1.1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-group input[type="number"]:focus {
+    outline: none;
+    border-color: #ff4d4d;
+    box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.4);
+}
+
+button,
+.nav-button {
+    background-color: #e50914;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s, transform 0.1s ease-out, box-shadow 0.2s ease-out;
+    margin-bottom: 0;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+button:hover:not(:disabled),
+.nav-button:hover:not(:disabled) {
+    background-color: #c00812;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+button:active:not(:disabled),
+.nav-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+button:disabled,
+.nav-button:disabled {
+    background-color: #4a4a4a;
+    color: #888888;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Loader styles */
+.loader {
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #e50914;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    display: none;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===================================== */
+/* Index Page Specific Styles            */
+/* ===================================== */
+#refreshOddsButton {
+    margin-top: 20px;
+    width: fit-content;
+}
+
+.race-list,
+.daily-race-list {
+    margin-top: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.race-item,
+.daily-race-item {
+    cursor: pointer;
+    padding: 15px 20px;
+    background-color: #333333;
+    border-left: 5px solid #e50914;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    font-size: 1em;
+    box-sizing: border-box;
+    color: #e0e0e0;
+    position: relative;
+    overflow: hidden;
+}
+
+.race-item:hover:not(.disabled-link),
+.daily-race-item:hover:not(.disabled-link) {
+    background-color: #444444;
+    border-color: #ff3333;
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.race-item span,
+.daily-race-item span {
+    display: block;
+    word-break: break-word;
+    margin-bottom: 4px;
+}
+
+.race-item span:first-child {
+    font-weight: 500;
+    color: #ffffff;
+    font-size: 1.1em;
+}
+
+.race-item span:last-child {
+    margin-bottom: 0;
+    font-size: 0.95em;
+    color: #b0b0b0;
+}
+
+.daily-race-item {
+    padding-left: 20px;
+}
+
+.disabled-link {
+    pointer-events: none;
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    border-left-color: #666666;
+}
+
+/* Table styles (shared between index.html and horse_career.html) */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    background-color: #333333;
+}
+
+.odds-table,
+.details-table {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+    font-size: 0.9em;
+    color: #e0e0e0;
+}
+
+.odds-table th,
+.odds-table td,
+.details-table th,
+.details-table td {
+    border: 1px solid #444444;
+    padding: 15px 20px;
+    text-align: left;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.odds-table th,
+.details-table th {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    font-weight: 600;
+    border-top: none;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.odds-table td,
+.details-table td {
+    white-space: nowrap;
+}
+
+.odds-table tr:nth-child(even),
+.details-table tr:nth-child(even) {
+    background-color: #3a3a3a;
+}
+
+.odds-table tr:hover:not(.highlight-yellow):not(.highlight-blue):not(.highlight-orange),
+.details-table tr:hover {
+    background-color: #4a4a4a;
+}
+
+/* Highlight classes for table rows (if used by JS) */
+table.odds-table tr.highlight-yellow {
+    background-color: #ffd700;
+    color: #333333;
+    font-weight: 600;
+}
+
+table.odds-table tr.highlight-blue {
+    background-color: #6495ed;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+table.odds-table tr.highlight-orange {
+    background-color: #ffa500;
+    color: #333333;
+    font-weight: 600;
+}
+
+/* Horse Name Link (shared) */
+.horse-name-link {
+    cursor: pointer;
+    color: #87ceeb;
+    text-decoration: underline;
+    transition: color 0.2s ease-in-out;
+}
+
+.horse-name-link:hover {
+    color: #add8e6;
+}
+
+/* Sort Icons (shared) */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 25px;
+    white-space: nowrap;
+}
+
+.sortable i {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8em;
+    color: #888888;
+    transition: color 0.2s ease-in-out;
+}
+
+.sortable:hover i {
+    color: #e0e0e0;
+}
+
+.sortable.asc i.fa-sort-up {
+    color: #ffffff;
+}
+.sortable.desc i.fa-sort-down {
+    color: #ffffff;
+}
+.sortable i.fa-sort {
+    color: #b0b0b0;
+}
+
+/* ===================================== */
+/* Horse Career Page Specific Styles     */
+/* ===================================== */
+.container.career-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 20px;
+}
+
+.career-header-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 1400px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e50914;
+    padding-bottom: 15px;
+    position: relative;
+}
+
+.career-header-section .page-title {
+    margin: 0;
+    font-size: 2.5em;
+    border-bottom: none;
+    padding-bottom: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    flex-grow: 1;
+}
+
+.nav-button.back-to-odds {
+    background-color: #555555;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+    font-size: 1em;
+    white-space: nowrap;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 20px;
+    z-index: 10;
+}
+
+.nav-button.back-to-odds:hover {
+    background-color: #777777;
+    transform: translateY(-50%);
+}
+
+/* Wrapper for graph and arrow buttons */
+.chart-navigation-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 1400px;
+    margin-bottom: 30px;
+    gap: 20px;
+}
+
+/* Inner wrapper for chart and buttons when stacked on mobile */
+.chart-and-buttons {
+    display: flex;
+    flex-direction: column; /* Default to column for consistency on career page */
+    align-items: center;
+    width: 100%;
+    gap: 20px; /* Gap between chart and button group */
+}
+
+/* Chart Area */
+.chart-area {
+    flex-grow: 1;
+    background-color: #2a2a2a;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    
+    /* ★変更ここから★ グラフの高さの制御 (縦伸び対策) */
+    height: 600px; /* PCでの推奨高さ */
+    max-height: 80vh; /* ビューポートの高さの80%を最大とする */
+    min-height: 400px; /* 最小の高さ */
+    /* overflow: hidden; /* 必要であれば追加 */
+}
+/* Chart.js の canvas 要素に適用 */
+.chart-area canvas {
+    max-width: 100%;
+    max-height: 100%; /* 親要素の高さに合わせる */
+    width: 100% !important; /* Chart.js が自動で設定するサイズを上書き */
+    height: 100% !important; /* Chart.js が自動で設定するサイズを上書き */
+}
+/* ★変更ここまで★ */
+
+/* Wrapper for "Prev Horse" / "Next Horse" buttons on mobile */
+.chart-buttons-bottom {
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* Space between the two buttons */
+    width: 100%; /* Take full width */
+    margin-top: 0; /* Adjust as needed */
+}
+
+/* Arrow Navigation Buttons (Prev/Next Horse) */
+.nav-arrow-button {
+    background-color: #e50914;
+    color: white;
+    border: none;
+    padding: 10px 20px; /* Padding for text-based buttons */
+    border-radius: 8px; /* Rounded corners for buttons */
+    cursor: pointer;
+    font-size: 1.1em; /* Adjust font size for text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Space between icon and text */
+    transition: background-color 0.2s, transform 0.1s;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    width: auto; /* Width adapts to content */
+    height: auto; /* Height adapts to content */
+    text-decoration: none;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.nav-arrow-button:hover {
+    background-color: #c00812;
+    transform: translateY(-3px);
+}
+
+.nav-arrow-button:active {
+    transform: translateY(0);
+}
+
+.nav-arrow-button.disabled {
+    background-color: #4a4a4a;
+    color: #888888;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    pointer-events: none;
+}
+
+/* Table Panel on career page */
+.career-table-panel {
+    width: 100%;
+    max-width: 1400px;
+    background-color: #2a2a2a;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    padding: 25px;
+}
+
+/* ===================================== */
+/* Responsive Design / Media Queries     */
+/* ===================================== */
+@media (max-width: 992px) {
+    .container {
+        flex-direction: column;
+        padding: 20px;
+        gap: 25px;
+        margin: 25px auto;
+    }
+
+    .panel {
+        min-width: unset;
+        width: 100%;
+        padding: 25px;
+    }
+
+    .panel.race-details-panel {
+        min-width: unset;
+    }
+
+    .input-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .input-group label,
+    .input-group input,
+    .input-group button,
+    #refreshOddsButton {
+        padding: 12px 20px;
+        font-size: 1em;
+        width: 100%;
+        max-width: unset;
+    }
+
+    .input-group input[type="number"] {
+        max-width: 100%;
+    }
+
+    .odds-table,
+    .details-table {
+        font-size: 0.85em;
+        min-width: 700px;
+    }
+
+    .odds-table th,
+    .odds-table td,
+    .details-table th,
+    .details-table td {
+        padding: 12px 15px;
+    }
+
+    h1 {
+        font-size: 2.2em;
+    }
+    h2 {
+        font-size: 1.6em;
+    }
+    h3 {
+        font-size: 1.2em;
+    }
+
+    #refreshOddsButton {
+        width: 100%;
+    }
+
+    /* Career page responsive adjustments */
+    .career-header-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding-top: 10px;
+        max-width: 100%;
+    }
+    .career-header-section .page-title {
+        font-size: 2em;
+        text-align: left;
+        flex-grow: unset;
+    }
+    .nav-button.back-to-odds {
+        position: static;
+        transform: none;
+        width: 100%;
+        justify-content: center;
+        margin-left: 0;
+    }
+    
+    .chart-navigation-wrapper {
+        flex-direction: column; /* PC版でもflex-direction: column; になった */
+        gap: 20px;
+        max-width: 100%;
+    }
+
+    .chart-and-buttons { /* 新しいラッパー */
+        flex-direction: column; /* ここも縦並び */
+        align-items: center;
+        gap: 20px; /* グラフとボタンラッパーの間隔 */
+        width: 100%; /* 親の幅を100%使用 */
+    }
+
+    .chart-area {
+        margin: 0;
+        /* ★変更ここから★ 高さ調整 */
+        height: 500px; /* タブレット向けの高さ */
+        max-height: 70vh;
+        min-height: 300px;
+    }
+    .chart-area canvas { /* canvasのスタイルは共通でOK */
+        max-height: 100%; 
+    }
+    /* ★変更ここまで★ */
+
+    .chart-buttons-bottom { /* ボタンを横並びにするラッパー */
+        display: flex;
+        justify-content: center;
+        gap: 10px; /* ボタン間の間隔を狭める */
+        width: 100%;
+        flex-wrap: wrap; /* ボタンが多ければ折り返す */
+    }
+    .nav-arrow-button { /* ボタンのサイズはここで調整 */
+        width: 48%; /* 2つ並べるために50%弱 */
+        font-size: 1em; /* テキストメインになるのでフォントサイズ調整 */
+        height: auto; /* 高さも自動 */
+        padding: 10px 15px; /* パディングでボタンの見た目を調整 */
+        border-radius: 8px; /* 丸ではなく角丸に */
+    }
+    .nav-arrow-button i {
+        font-size: 1.2em; /* アイコンサイズはやや小さく */
+    }
+
+    .career-table-panel {
+        padding: 20px;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding: 10px;
+        gap: 10px;
+        margin: 10px auto;
+    }
+
+    .panel {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 1.6em;
+        margin-bottom: 15px;
+    }
+    h2 {
+        font-size: 1.2em;
+    }
+    h3 {
+        font-size: 1em;
+    }
+
+    .input-group input[type="number"],
+    .input-group button,
+    #refreshOddsButton {
+        padding: 8px;
+        font-size: 0.9em;
+    }
+
+    .race-item,
+    .daily-race-item {
+        padding: 10px 12px;
+        font-size: 0.85em;
+    }
+    .race-item span:first-child {
+        font-size: 1em;
+    }
+    .race-item span:last-child {
+        font-size: 0.8em;
+    }
+
+
+    .odds-table {
+        font-size: 0.7em;
+        min-width: 500px;
+    }
+
+    .odds-table th,
+    .odds-table td {
+        padding: 8px 10px;
+    }
+
+    /* Career page mobile adjustments */
+    .career-header-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .career-header-section .page-title {
+        font-size: 1.6em;
+    }
+    .nav-button.back-to-odds {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 15px;
+    }
+    .chart-area {
+        padding: 10px;
+        /* ★変更ここから★ 高さ調整 */
+        height: 350px; /* モバイル向けの高さ */
+        max-height: 60vh;
+        min-height: 250px;
+    }
+    .chart-area canvas { /* canvasのスタイルは共通でOK */
+        width: 100%;
+        height: auto;
+        max-height: 100%;
+    }
+    /* ★変更ここまで★ */
+    .chart-buttons-bottom {
+        gap: 8px; /* ボタン間隔をさらに狭める */
+    }
+    .nav-arrow-button {
+        width: 49%; /* ほぼ50%で2列表示 */
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+    .nav-arrow-button i {
+        font-size: 1.0em;
+    }
+    .career-table-panel {
+        padding: 15px;
+    }
+}
